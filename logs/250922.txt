@@ -1,0 +1,10 @@
+프로젝트 : 고객 VOC 관리용 DB 파이프라인 설계 및 구현
+
+# Overview
+- 스키마 생성 도구(db_schema.py) 설계, 기존 CRM용 DB 참고
+
+# Detail
+1. 기본
+- SQLite3 > MySQL 변경: User가 최소 7명이며 추가될 가능성이 높아 SQL 툴 변경
+- 기타 조합: MySQL, FastAPI, SQLAlchemy, PyMySQL, Alembic, Streamlit
+- src 폴더 > backend, frontend 구분: 전문화된 구조

@@ -1,0 +1,13 @@
+{
+    "mysql_connection": {
+      "user": "your_user",
+      "password": "your_password",
+      "host": "127.0.0.1",
+      "port": 3306,
+    //   "database": "voc_db"
+    }
+    // "tables": {
+    //   "voc": "customer_voc",
+    //   "users": "admin_users"
+    // }
+  }
