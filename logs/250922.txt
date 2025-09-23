@@ -1,7 +1,8 @@
 프로젝트 : 고객 VOC 관리용 DB 파이프라인 설계 및 구현
 
 # Overview
-- 스키마 생성 도구(db_schema.py) 설계, 기존 CRM용 DB 참고
+- 전체 서비스 기획 초안 생성 (다소 러프)
+- 스키마 생성 도구(schemas.py) 설계, 기존 CRM용 DB 참고 > 대격변
 
 # Detail
 1. 기본
@@ -45,3 +46,8 @@
 - schemas.py: Pydantic 스키마 (한글 주석 포함)
 - requirements.txt: ROS 라이브러리 제거, VOC 시스템 핵심 라이브러리만 유지
 - AI/ML 라이브러리 포함: torch, transformers, numpy 등 (확장성 고려)
+
+# Feedback
+- 로그인 시스템 및 권한 관리에 있어 디테일이 부족했음 > 토큰 낭비
+- voc_requirements.txt는 큰 그림으로 생각하고 디테일한 부분은 조금 더 구체화하여 LLM 입력해야 낭비 줄임
+- 보안 관련 지식이 없어 검증 불가, 스터디 필요

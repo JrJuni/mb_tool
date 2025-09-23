@@ -4,7 +4,7 @@ from sqlalchemy import and_
 from passlib.context import CryptContext
 from datetime import datetime
 from typing import Optional, List
-from .models import User, AuditLog
+from .db_models import User, AuditLog
 from .schemas import UserCreate, UserUpdate
 from .logging_conf import log_user_creation, log_user_update
 
@@ -28,6 +28,14 @@ def get_user_by_email(db: Session, email: str) -> Optional[User]:
     """이메일로 사용자 조회"""
     return db.query(User).filter(User.email == email).first()
 
+def get_user_by_username(db: Session, username: str) -> Optional[User]:
+    """사용자명으로 사용자 조회"""
+    return db.query(User).filter(User.username == username).first()
+
+def get_user_by_email_and_username(db: Session, email: str, username: str) -> Optional[User]:
+    """이메일과 사용자명으로 사용자 조회"""
+    return db.query(User).filter(and_(User.email == email, User.username == username)).first()
+
 def get_users(db: Session, skip: int = 0, limit: int = 100) -> List[User]:
     """사용자 목록 조회 (페이지네이션)"""
     return db.query(User).offset(skip).limit(limit).all()
@@ -44,7 +52,7 @@ def create_user(db: Session, user: UserCreate, ip: Optional[str] = None) -> User
     # 사용자 객체 생성
     db_user = User(
         email=user.email,
-        name=user.name,
+        username=user.username,
         hashed_password=hashed_password,
         auth_level=user.auth_level,
         is_active=user.is_active,
@@ -76,9 +84,9 @@ def update_user(db: Session, user_id: int, user_update: UserUpdate, ip: Optional
         updated_fields['email'] = f"{db_user.email} -> {user_update.email}"
         db_user.email = user_update.email
     
-    if user_update.name is not None:
-        updated_fields['name'] = f"{db_user.name} -> {user_update.name}"
-        db_user.name = user_update.name
+    if user_update.username is not None:
+        updated_fields['username'] = f"{db_user.username} -> {user_update.username}"
+        db_user.username = user_update.username
     
     if user_update.auth_level is not None:
         updated_fields['auth_level'] = f"{db_user.auth_level} -> {user_update.auth_level}"
@@ -117,6 +125,72 @@ def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
     if user.auth_level == 0:
         return None  # 승인 대기 상태(레벨 0)는 로그인 불가
     return user
+
+def check_password_reset_needed(db: Session, email: str, password: str) -> bool:
+    """비밀번호가 0000인지 확인"""
+    user = get_user_by_email(db, email)
+    if not user:
+        return False
+    return verify_password("0000", user.hashed_password) and password == "0000"
+
+def reset_password_to_default(db: Session, user_id: int, actor_user_id: int, ip: Optional[str] = None) -> bool:
+    """비밀번호를 0000으로 초기화"""
+    user = get_user_by_id(db, user_id)
+    if not user:
+        return False
+    
+    # 비밀번호를 0000으로 초기화
+    user.hashed_password = get_password_hash("0000")
+    user.updated_at = datetime.utcnow()
+    
+    db.commit()
+    
+    # 감사 로그 기록
+    create_audit_log(
+        db=db,
+        actor_user_id=actor_user_id,
+        action="password_reset",
+        table_name="users",
+        row_id=user.id,
+        after_json={"action": "password_reset_to_0000"},
+        ip=ip
+    )
+    
+    return True
+
+def update_password(db: Session, user_id: int, new_password: str, ip: Optional[str] = None) -> bool:
+    """사용자 비밀번호 업데이트"""
+    user = get_user_by_id(db, user_id)
+    if not user:
+        return False
+    
+    user.hashed_password = get_password_hash(new_password)
+    user.updated_at = datetime.utcnow()
+    
+    db.commit()
+    
+    # 감사 로그 기록
+    create_audit_log(
+        db=db,
+        actor_user_id=user_id,
+        action="password_update",
+        table_name="users",
+        row_id=user.id,
+        after_json={"action": "password_updated"},
+        ip=ip
+    )
+    
+    return True
+
+def get_users_with_reset_permission(db: Session, user_auth_level: int) -> List[User]:
+    """비밀번호 초기화 권한이 있는 사용자 목록 조회 (레벨 3-5, 동급 이상)"""
+    return db.query(User).filter(
+        and_(
+            User.auth_level >= 3,
+            User.auth_level >= user_auth_level,
+            User.is_active == True
+        )
+    ).all()
 
 def delete_user(db: Session, user_id: int) -> bool:
     """사용자 삭제 (소프트 삭제)"""
